@@ -1,0 +1,13 @@
+build/
+.gradle/
+*.apk
+local.properties
+*.3ds
+*.cia
+*.cxi
+*.cci
+code.bin
+romfs/
+exefs/
+baserom*
+assets_extracted/
