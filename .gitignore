@@ -11,3 +11,6 @@ romfs/
 exefs/
 baserom*
 assets_extracted/
+external/
+android/app/src/main/java/org/libsdl/
+.cxx/
