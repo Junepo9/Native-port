@@ -58,7 +58,7 @@ int main(int, char**) {
         SDL_Quit();
         return 1;
     }
-    SDL_RenderSetLogicalSize(renderer, VW, VH);
+    applyLayout(renderer);
 
     Screen top;
     Screen bottom;
@@ -104,6 +104,10 @@ int main(int, char**) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) running = false;
+            if (e.type == SDL_WINDOWEVENT && (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED ||
+                                              e.window.event == SDL_WINDOWEVENT_RESIZED)) {
+                applyLayout(renderer);
+            }
             handleEvent(input, renderer, window, e);
         }
 
@@ -172,13 +176,13 @@ int main(int, char**) {
         SDL_RenderClear(renderer);
 
         SDL_SetRenderDrawColor(renderer, 10, 10, 12, 255);
-        SDL_Rect bezelTop = {TOP_RECT.x - 8, TOP_RECT.y - 8, TOP_RECT.w + 16, TOP_RECT.h + 16};
-        SDL_Rect bezelBot = {BOT_RECT.x - 8, BOT_RECT.y - 8, BOT_RECT.w + 16, BOT_RECT.h + 16};
+        SDL_Rect bezelTop = {gL.top.x - 8, gL.top.y - 8, gL.top.w + 16, gL.top.h + 16};
+        SDL_Rect bezelBot = {gL.bot.x - 8, gL.bot.y - 8, gL.bot.w + 16, gL.bot.h + 16};
         SDL_RenderFillRect(renderer, &bezelTop);
         SDL_RenderFillRect(renderer, &bezelBot);
 
-        SDL_RenderCopy(renderer, top.tex, nullptr, &TOP_RECT);
-        SDL_RenderCopy(renderer, bottom.tex, nullptr, &BOT_RECT);
+        SDL_RenderCopy(renderer, top.tex, nullptr, &gL.top);
+        SDL_RenderCopy(renderer, bottom.tex, nullptr, &gL.bot);
 
         drawControls(renderer, hid);
         SDL_RenderPresent(renderer);
