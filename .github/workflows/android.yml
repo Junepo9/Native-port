@@ -1,0 +1,40 @@
+name: Android build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Fetch SDL2 and its Android Java glue
+        run: |
+          git clone --depth 1 --branch release-2.30.9 https://github.com/libsdl-org/SDL.git external/SDL2
+          mkdir -p android/app/src/main/java/org/libsdl/app
+          cp external/SDL2/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
+
+      - name: Install NDK and CMake
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+          sdkmanager --install "ndk;26.3.11579264" "cmake;3.22.1" "platforms;android-34"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build debug APK
+        run: gradle -p android assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-port-debug-apk
+          path: android/app/build/outputs/apk/debug/*.apk
