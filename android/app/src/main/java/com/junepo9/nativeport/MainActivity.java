@@ -1,6 +1,7 @@
 package com.junepo9.nativeport;
 
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -24,10 +25,20 @@ public class MainActivity extends SDLActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // SDL re-requests orientation on its own; this puts it back.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+
         File header = new File(getFilesDir(), "header.bin");
         if (!header.exists()) {
             addSelectButton();
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Also re-assert when coming back from the file picker.
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
     }
 
     private void addSelectButton() {
