@@ -133,11 +133,10 @@ int main(int, char**) {
         while (acc >= dt) {
             updateHid(hid, input);
 
+            // Camera only moves when you touch the C-stick. No idle drift.
             if (stick.active) {
                 cam.yaw -= stick.x * 0.045f;
                 cam.pitch += stick.y * 0.035f;
-            } else {
-                cam.yaw += 0.0015f;  // slow idle drift so the scene stays alive
             }
             if (cam.pitch < -0.15f) cam.pitch = -0.15f;
             if (cam.pitch > 1.25f) cam.pitch = 1.25f;
