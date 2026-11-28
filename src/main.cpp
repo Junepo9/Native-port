@@ -1,5 +1,6 @@
 #include <SDL.h>
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -151,6 +152,7 @@ int main(int, char**) {
         }
 
         // Draw the top screen into its buffer.
+        top.clearDepth();
         for (int y = 0; y < TOP_H; y++) top.fillRect(0, y, TOP_W, 1, tintFor(state, y));
         if (headerLen >= 0x120) {
             for (int i = 0; i < 32; i++) {
@@ -159,6 +161,29 @@ int main(int, char**) {
             }
         }
         top.fillRect(static_cast<int>(boxX), static_cast<int>(boxY), 24, 24, palette[colorIdx]);
+
+        // --- Rotating triangle, depth-tested ------------------------------
+        {
+            float a = static_cast<float>(SDL_GetTicks()) * 0.001f;
+            float ca = std::cos(a), sa = std::sin(a);
+
+            auto project = [&](float x, float y, float z, int& sx, int& sy, float& sz) {
+                float rx = x * ca - z * sa;  // spin about the vertical axis
+                float rz = x * sa + z * ca;
+                float d = rz + 3.0f;         // distance from the eye
+                sz = 0.5f - rz * 0.2f;       // nearer to us => smaller z
+                float f = 1.8f / d;
+                sx = TOP_W / 2 + static_cast<int>(rx * f * TOP_W * 0.5f);
+                sy = TOP_H / 2 + static_cast<int>(y * f * TOP_H * 0.5f);
+            };
+
+            int x0, y0, x1, y1, x2, y2;
+            float z0, z1, z2;
+            project(0.0f, -1.0f, 0.0f, x0, y0, z0);
+            project(1.0f, 1.0f, 0.0f, x1, y1, z1);
+            project(-1.0f, 1.0f, 0.0f, x2, y2, z2);
+            top.fillTriangle(x0, y0, z0, x1, y1, z1, x2, y2, z2, rgb(80, 220, 120));
+        }
 
         // Draw the bottom screen into its buffer.
         bottom.clear(rgb(20, 20, 26));
