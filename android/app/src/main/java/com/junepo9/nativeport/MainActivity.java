@@ -39,7 +39,7 @@ public class MainActivity extends SDLActivity {
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
-                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+                Gravity.CENTER);
         lp.bottomMargin = 64;
         addContentView(selectButton, lp);
     }
