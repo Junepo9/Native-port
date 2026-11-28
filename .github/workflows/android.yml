@@ -22,7 +22,7 @@ jobs:
           mkdir -p android/app/src/main/java/org/libsdl/app
           cp external/SDL2/android-project/app/src/main/java/org/libsdl/app/*.java android/app/src/main/java/org/libsdl/app/
 
-            - name: Install NDK and CMake
+      - name: Install NDK and CMake
         run: |
           SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
           yes | "$SDKMANAGER" --licenses > /dev/null || true
