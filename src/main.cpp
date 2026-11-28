@@ -1,5 +1,25 @@
 #include <SDL.h>
 #include <cstdio>
+#include <cstring>
+#include <string>
+
+enum class State { Waiting, Valid, Invalid };
+
+static const size_t HEADER_SIZE = 512;
+
+static bool loadHeader(const std::string& path, unsigned char* buf, size_t& len) {
+    FILE* f = std::fopen(path.c_str(), "rb");
+    if (!f) return false;
+    len = std::fread(buf, 1, HEADER_SIZE, f);
+    std::fclose(f);
+    return len > 0;
+}
+
+static bool looksLike3dsGame(const unsigned char* buf, size_t len) {
+    if (len < 0x104) return false;
+    return std::memcmp(buf + 0x100, "NCSD", 4) == 0 ||
+           std::memcmp(buf + 0x100, "NCCH", 4) == 0;
+}
 
 int main(int, char**) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER) != 0) {
@@ -24,36 +44,54 @@ int main(int, char**) {
         return 1;
     }
 
-    const SDL_Color colors[] = {
-        {20, 20, 60, 255}, {10, 80, 40, 255}, {90, 30, 30, 255}, {60, 60, 10, 255}};
-    const int numColors = 4;
-    int colorIndex = 0;
-    int touchX = 400;
-    int touchY = 240;
+    std::string headerPath = "header.bin";
+#ifdef __ANDROID__
+    const char* base = SDL_AndroidGetInternalStoragePath();
+    if (base) headerPath = std::string(base) + "/header.bin";
+#endif
+
+    unsigned char header[HEADER_SIZE];
+    std::memset(header, 0, sizeof(header));
+    size_t headerLen = 0;
+    State state = State::Waiting;
+    int frame = 0;
 
     bool running = true;
     while (running) {
         SDL_Event e;
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) running = false;
-            if (e.type == SDL_MOUSEBUTTONDOWN) {
-                colorIndex = (colorIndex + 1) % numColors;
-                touchX = e.button.x;
-                touchY = e.button.y;
-            }
-            if (e.type == SDL_MOUSEMOTION) {
-                touchX = e.motion.x;
-                touchY = e.motion.y;
-            }
         }
 
-        const SDL_Color& c = colors[colorIndex];
-        SDL_SetRenderDrawColor(renderer, c.r, c.g, c.b, 255);
+        // Check about twice a second until a file has been chosen.
+        if (state == State::Waiting && frame % 30 == 0) {
+            if (loadHeader(headerPath, header, headerLen)) {
+                state = looksLike3dsGame(header, headerLen) ? State::Valid : State::Invalid;
+            }
+        }
+        frame++;
+
+        switch (state) {
+            case State::Waiting: SDL_SetRenderDrawColor(renderer, 15, 20, 60, 255); break;
+            case State::Valid:   SDL_SetRenderDrawColor(renderer, 10, 90, 40, 255); break;
+            case State::Invalid: SDL_SetRenderDrawColor(renderer, 100, 25, 25, 255); break;
+        }
         SDL_RenderClear(renderer);
 
-        SDL_Rect box = {touchX - 40, touchY - 40, 80, 80};
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        SDL_RenderFillRect(renderer, &box);
+        // One square per header byte (offsets 0x100 to 0x11F), brightness = byte value.
+        if (headerLen >= 0x120) {
+            int w = 0, h = 0;
+            SDL_GetRendererOutputSize(renderer, &w, &h);
+            int cell = w / 36;
+            int startX = (w - cell * 32) / 2;
+            int y = h / 2 - cell / 2;
+            for (int i = 0; i < 32; i++) {
+                Uint8 v = header[0x100 + i];
+                SDL_SetRenderDrawColor(renderer, v, v, v, 255);
+                SDL_Rect r = {startX + i * cell, y, cell - 2, cell - 2};
+                SDL_RenderFillRect(renderer, &r);
+            }
+        }
 
         SDL_RenderPresent(renderer);
     }
