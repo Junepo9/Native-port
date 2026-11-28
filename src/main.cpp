@@ -8,6 +8,7 @@
 #include "controls.h"
 #include "display.h"
 #include "hid.h"
+#include "scene.h"
 
 enum class State { Waiting, Valid, Invalid };
 
@@ -89,8 +90,8 @@ int main(int, char**) {
     HidState hid;
 
     // Test scene state
-    float boxX = 188.0f;
-    float boxY = 108.0f;
+    float boxX = 30.0f;
+    float boxY = 200.0f;
     int colorIdx = 0;
     const uint32_t palette[4] = {rgb(255, 200, 0), rgb(0, 200, 255), rgb(255, 80, 120),
                                  rgb(120, 255, 120)};
@@ -162,27 +163,10 @@ int main(int, char**) {
         }
         top.fillRect(static_cast<int>(boxX), static_cast<int>(boxY), 24, 24, palette[colorIdx]);
 
-        // --- Rotating triangle, depth-tested ------------------------------
+        // --- The cube, flat-shaded and depth-tested -----------------------
         {
-            float a = static_cast<float>(SDL_GetTicks()) * 0.001f;
-            float ca = std::cos(a), sa = std::sin(a);
-
-            auto project = [&](float x, float y, float z, int& sx, int& sy, float& sz) {
-                float rx = x * ca - z * sa;  // spin about the vertical axis
-                float rz = x * sa + z * ca;
-                float d = rz + 3.0f;         // distance from the eye
-                sz = 0.5f - rz * 0.2f;       // nearer to us => smaller z
-                float f = 1.8f / d;
-                sx = TOP_W / 2 + static_cast<int>(rx * f * TOP_W * 0.5f);
-                sy = TOP_H / 2 + static_cast<int>(y * f * TOP_H * 0.5f);
-            };
-
-            int x0, y0, x1, y1, x2, y2;
-            float z0, z1, z2;
-            project(0.0f, -1.0f, 0.0f, x0, y0, z0);
-            project(1.0f, 1.0f, 0.0f, x1, y1, z1);
-            project(-1.0f, 1.0f, 0.0f, x2, y2, z2);
-            top.fillTriangle(x0, y0, z0, x1, y1, z1, x2, y2, z2, rgb(80, 220, 120));
+            float t = static_cast<float>(SDL_GetTicks()) * 0.001f;
+            drawCube(top, t * 0.9f, t * 0.5f, rgb(90, 220, 130));
         }
 
         // Draw the bottom screen into its buffer.
