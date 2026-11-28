@@ -6,6 +6,7 @@
 #include <string>
 
 #include "controls.h"
+#include "cstick.h"
 #include "display.h"
 #include "hid.h"
 #include "scene.h"
@@ -88,8 +89,10 @@ int main(int, char**) {
 
     Input input;
     HidState hid;
+    SDL_FingerID stickFinger = NO_FINGER;
 
-    // Test scene state
+    Camera cam;
+
     float boxX = 30.0f;
     float boxY = 200.0f;
     int colorIdx = 0;
@@ -113,7 +116,6 @@ int main(int, char**) {
             handleEvent(input, renderer, window, e);
         }
 
-        // Check about twice a second until a game file has been chosen.
         if (state == State::Waiting && frame % 30 == 0) {
             if (loadHeader(headerPath, header, headerLen)) {
                 state = looksLike3dsGame(header, headerLen) ? State::Valid : State::Invalid;
@@ -121,13 +123,24 @@ int main(int, char**) {
         }
         frame++;
 
-        // Fixed 60 Hz game updates.
+        // The C-stick steers the camera.
+        StickAxis stick = pollCStick(input, stickFinger);
+
         Uint64 now = SDL_GetPerformanceCounter();
         acc += static_cast<double>(now - last) / static_cast<double>(freq);
         last = now;
         if (acc > 0.25) acc = 0.25;
         while (acc >= dt) {
             updateHid(hid, input);
+
+            if (stick.active) {
+                cam.yaw -= stick.x * 0.045f;
+                cam.pitch += stick.y * 0.035f;
+            } else {
+                cam.yaw += 0.0015f;  // slow idle drift so the scene stays alive
+            }
+            if (cam.pitch < -0.15f) cam.pitch = -0.15f;
+            if (cam.pitch > 1.25f) cam.pitch = 1.25f;
 
             float mx = hid.circleX;
             float my = -hid.circleY;
@@ -152,6 +165,8 @@ int main(int, char**) {
             acc -= dt;
         }
 
+        float time = static_cast<float>(SDL_GetTicks()) * 0.001f;
+
         // Draw the top screen into its buffer.
         top.clearDepth();
         for (int y = 0; y < TOP_H; y++) top.fillRect(0, y, TOP_W, 1, tintFor(state, y));
@@ -161,13 +176,12 @@ int main(int, char**) {
                 top.fillRect(i * 12, 0, 11, 10, rgb(v, v, v));
             }
         }
-        top.fillRect(static_cast<int>(boxX), static_cast<int>(boxY), 24, 24, palette[colorIdx]);
 
-        // --- The cube, flat-shaded and depth-tested -----------------------
-        {
-            float t = static_cast<float>(SDL_GetTicks()) * 0.001f;
-            drawCube(top, t * 0.9f, t * 0.5f, rgb(90, 220, 130));
-        }
+        // --- The test scene ----------------------------------------------
+        drawTestScene(top, cam, time);
+
+        // Drawn last, without depth, so it always sits on top.
+        top.fillRect(static_cast<int>(boxX), static_cast<int>(boxY), 24, 24, palette[colorIdx]);
 
         // Draw the bottom screen into its buffer.
         bottom.clear(rgb(20, 20, 26));
@@ -180,7 +194,6 @@ int main(int, char**) {
         top.upload();
         bottom.upload();
 
-        // Put everything on the window.
         SDL_SetRenderDrawColor(renderer, 24, 24, 28, 255);
         SDL_RenderClear(renderer);
 
@@ -194,6 +207,7 @@ int main(int, char**) {
         SDL_RenderCopy(renderer, bottom.tex, nullptr, &gL.bot);
 
         drawControls(renderer, hid);
+        drawCStick(renderer, stick.active ? stick.x : 0.0f, stick.active ? stick.y : 0.0f);
         SDL_RenderPresent(renderer);
     }
 
