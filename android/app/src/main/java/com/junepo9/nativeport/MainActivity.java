@@ -4,6 +4,11 @@ import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.FrameLayout;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -13,17 +18,37 @@ public class MainActivity extends SDLActivity {
     private static final int PICK_GAME = 1001;
     private static final int HEADER_BYTES = 512;
 
+    private Button selectButton;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         File header = new File(getFilesDir(), "header.bin");
-        if (!header.exists() && savedInstanceState == null) {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("*/*");
-            startActivityForResult(intent, PICK_GAME);
+        if (!header.exists()) {
+            addSelectButton();
         }
+    }
+
+    private void addSelectButton() {
+        selectButton = new Button(this);
+        selectButton.setText("Select game file");
+        selectButton.setAllCaps(false);
+        selectButton.setOnClickListener(v -> openPicker());
+
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        lp.bottomMargin = 64;
+        addContentView(selectButton, lp);
+    }
+
+    private void openPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        startActivityForResult(intent, PICK_GAME);
     }
 
     @Override
@@ -36,12 +61,7 @@ public class MainActivity extends SDLActivity {
         if (uri == null) {
             return;
         }
-        new Thread(new Runnable() {
-            @Override
-            public void run() {
-                copyHeader(uri);
-            }
-        }).start();
+        new Thread(() -> copyHeader(uri)).start();
     }
 
     private void copyHeader(Uri uri) {
@@ -62,7 +82,13 @@ public class MainActivity extends SDLActivity {
             try (FileOutputStream out = new FileOutputStream(tmp)) {
                 out.write(buf, 0, total);
             }
-            tmp.renameTo(new File(getFilesDir(), "header.bin"));
+            if (tmp.renameTo(new File(getFilesDir(), "header.bin"))) {
+                runOnUiThread(() -> {
+                    if (selectButton != null) {
+                        selectButton.setVisibility(View.GONE);
+                    }
+                });
+            }
         } catch (Exception e) {
             Log.e("NativePort", "copyHeader failed", e);
         }
