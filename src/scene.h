@@ -62,13 +62,14 @@ static inline Vec3 viewV(Vec3 p, const Camera& cam) {
     return v3(b.x, b.y, b.z + cam.dist);
 }
 
-// View space -> screen pixels. depth: 0 = near the eye, 1 = far away.
-static inline void projectV(Vec3 p, float focal, int& sx, int& sy, float& depth) {
+// View space -> screen pixels. Now takes the buffer size so any
+// resolution works. depth: 0 = near the eye, 1 = far away.
+static inline void projectV(Vec3 p, float focal, int w, int h, int& sx, int& sy, float& depth) {
     float z = p.z;
     if (z < 0.1f) z = 0.1f;
-    float f = focal * static_cast<float>(TOP_H) * 0.5f;
-    sx = TOP_W / 2 + static_cast<int>(p.x * f / z);
-    sy = TOP_H / 2 - static_cast<int>(p.y * f / z);
+    float f = focal * static_cast<float>(h) * 0.5f;
+    sx = w / 2 + static_cast<int>(p.x * f / z);
+    sy = h / 2 - static_cast<int>(p.y * f / z);
     const float nearZ = 0.5f, farZ = 20.0f;
     depth = (z - nearZ) / (farZ - nearZ);
     if (depth < 0.0f) depth = 0.0f;
@@ -128,7 +129,7 @@ static void drawCubeAt(Screen& s, Vec3 center, float scale, float objYaw, float 
         b.z += center.z;
 
         v[i] = viewV(b, cam);
-        projectV(v[i], cam.focal, sx[i], sy[i], sz[i]);
+        projectV(v[i], cam.focal, s.w, s.h, sx[i], sy[i], sz[i]);
     }
 
     for (int t = 0; t < 12; t++) {
@@ -148,7 +149,7 @@ static void drawCubeAt(Screen& s, Vec3 center, float scale, float objYaw, float 
     }
 }
 
-// Leftover from the first cube milestone, kept so nothing breaks.
+// Kept so nothing that calls it breaks.
 static void drawCube(Screen& screen, float yaw, float pitch, uint32_t baseColor) {
     Camera cam;
     drawCubeAt(screen, v3(0, 0, 0), 1.0f, yaw, pitch, cam, baseColor);
@@ -166,14 +167,14 @@ static void drawGrid(Screen& s, const Camera& cam, float y) {
 
         Vec3 a = viewV(v3(-N, y, static_cast<float>(i)), cam);
         Vec3 b = viewV(v3(N, y, static_cast<float>(i)), cam);
-        projectV(a, cam.focal, x0, y0, z0);
-        projectV(b, cam.focal, x1, y1, z1);
+        projectV(a, cam.focal, s.w, s.h, x0, y0, z0);
+        projectV(b, cam.focal, s.w, s.h, x1, y1, z1);
         drawLine3(s, x0, y0, z0, x1, y1, z1, col);
 
         Vec3 c = viewV(v3(static_cast<float>(i), y, -N), cam);
         Vec3 d = viewV(v3(static_cast<float>(i), y, N), cam);
-        projectV(c, cam.focal, x0, y0, z0);
-        projectV(d, cam.focal, x1, y1, z1);
+        projectV(c, cam.focal, s.w, s.h, x0, y0, z0);
+        projectV(d, cam.focal, s.w, s.h, x1, y1, z1);
         drawLine3(s, x0, y0, z0, x1, y1, z1, col);
     }
 }
